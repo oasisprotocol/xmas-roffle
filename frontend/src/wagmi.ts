@@ -24,7 +24,7 @@ export const config = getDefaultConfig({
   appName: 'Xmas Raffle',
   projectId: '5c76ff8764ea097205fffc221f056c98',
   // TODO: mainnet
-  chains: [sapphireLocalnet],
+  chains: [sapphireTestnet],
   ssr: false,
   batch: {
     multicall: false,
