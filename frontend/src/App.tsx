@@ -4,12 +4,11 @@ import svgPaths from "./imports/svg-tho7mppomn";
 import { BaseError, useAccount, useBalance, useConfig, useReadContract, useWriteContract } from 'wagmi';
 import RoffleJson from '../../artifacts/contracts/Roffle.sol/Roffle.json';
 import { Roffle$Type } from '../../artifacts/contracts/Roffle.sol/Roffle.ts';
-import { parseEther } from 'viem';
+import { formatEther, parseEther } from 'viem';
 import { waitForTransactionReceipt } from 'viem/actions';
 
 const typedRoffleJson = RoffleJson as Roffle$Type
 
-const EXPECTED_END = new Date('2025-12-24T01:00:00.000Z').getTime()
 // TODO: mainnet
 const RAFFLE_CONTRACT_ADDRESS = '0x0165878A594ca255338adfa4d48449f69242Eb8F' as `0x${string}`;
 
@@ -73,26 +72,52 @@ export function App() {
   const [ticketAmount, setTicketAmount] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const [purchasedTickets, setPurchasedTickets] = useState(0);
+
+  const raffleBalance = useBalance({
+    address: RAFFLE_CONTRACT_ADDRESS,
+  })
+  const ticketPrice = useReadContract({
+    address: RAFFLE_CONTRACT_ADDRESS,
+    abi: typedRoffleJson.abi,
+    functionName: 'TICKET_PRICE',
+  });
+  const raffleEndTime = useReadContract({
+    address: RAFFLE_CONTRACT_ADDRESS,
+    abi: typedRoffleJson.abi,
+    functionName: 'raffleEndTime',
+  });
+  const ticketsRemaining = useReadContract({
+    address: RAFFLE_CONTRACT_ADDRESS,
+    abi: typedRoffleJson.abi,
+    functionName: 'getTicketsRemaining',
+    query: {
+      refetchInterval: 60_000,
+    },
+  });
   const enterTx = useWriteContract();
 
+  if (!ticketPrice.data) return
+  if (!raffleEndTime.data) return
+
   const ticketOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => (
-    { value: v, label: v + ' ticket', price: v * 250 + ' ROSE' }
+    { value: v, label: v + ' ticket', price: formatEther(BigInt(v) * ticketPrice.data) + ' ROSE' }
   ));
 
   const handleBuyTickets = async () => {
+    ticketsRemaining.refetch()
     try {
       const hash = await enterTx.writeContractAsync({
         address: RAFFLE_CONTRACT_ADDRESS,
         abi: typedRoffleJson.abi,
         functionName: 'buyTickets',
         args: [BigInt(ticketAmount)],
-        // TODO: 250
-        value: parseEther('0.2') * BigInt(ticketAmount),
+        value: BigInt(ticketAmount) * ticketPrice.data,
       });
       const transactionReceipt = await waitForTransactionReceipt(config.getClient(), { hash })
       if (transactionReceipt.status === 'success') {
         setPurchasedTickets(prev => prev + ticketAmount);
         setShowSuccess(true);
+        ticketsRemaining.refetch()
       } else {
         console.log('reverted', transactionReceipt)
         alert('Transaction reverted. Check explorer.oasis.io to see error message')
@@ -156,7 +181,7 @@ export function App() {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-4 items-center text-center">
                 <p className="font-['Mountains_of_Christmas',cursive] text-[40px] leading-[48px] md:text-[56px] md:leading-[64px] text-white">X-mas Roffle</p>
-                <p className="font-normal leading-[20px] text-[16px] text-[rgba(255,255,255,0.6)]">Participate in the Oasis Raffle! The initial pot is 100,000 ROSE and grows with each ticket purchased which costs 250 ROSE.</p>
+                <p className="font-normal leading-[20px] text-[16px] text-[rgba(255,255,255,0.6)]">Participate in the Oasis Raffle! The initial pot is 100,000 ROSE and grows with each ticket purchased which costs {formatEther(ticketPrice.data)} ROSE.</p>
               </div>
 
               {!isConnected ?
@@ -218,7 +243,7 @@ export function App() {
                       className="bg-white hover:bg-gray-100 transition-colors flex h-[64px] items-center justify-center px-4 py-2 rounded-[12px] w-full"
                     >
                       <p className="font-medium leading-[20px] text-[16px] text-black text-center">
-                        Buy {ticketAmount} Ticket{ticketAmount > 1 ? 's' : ''} for {ticketAmount * 250} ROSE
+                        Buy {ticketAmount} Ticket{ticketAmount > 1 ? 's' : ''} for {formatEther(BigInt(ticketAmount) * ticketPrice.data)} ROSE
                       </p>
                     </button>
                   </div>
@@ -291,11 +316,13 @@ export function App() {
             <div className="flex flex-col items-center px-6 md:px-10 py-5 text-center">
               <p className="font-light leading-[20px] text-[14px] text-[rgba(255,255,255,0.6)]">Days to go</p>
               <p className="font-['Mountains_of_Christmas',cursive] leading-[56px] text-[48px] text-white">{
-                EXPECTED_END < Date.now()
-                  ? '0'
-                  : (EXPECTED_END - Date.now()) / 1000 / 60 / 60 / 24 < 1
-                    ? '<1'
-                    : Math.floor((EXPECTED_END - Date.now()) / 1000 / 60 / 60 / 24)
+                !raffleEndTime.data
+                  ? ''
+                  : Number(raffleEndTime.data*1000n) < Date.now()
+                    ? '0'
+                    : (Number(raffleEndTime.data*1000n) - Date.now()) / 1000 / 60 / 60 / 24 < 1
+                      ? '<1'
+                      : Math.floor((Number(raffleEndTime.data*1000n) - Date.now()) / 1000 / 60 / 60 / 24)
               }</p>
             </div>
           </div>
@@ -303,7 +330,7 @@ export function App() {
             <div className="flex flex-col items-center px-6 md:px-10 py-5 text-center">
               <p className="font-light leading-[20px] text-[14px] text-[rgba(255,255,255,0.6)]">Tickets left</p>
               <p className="font-['Mountains_of_Christmas',cursive] leading-[56px] text-[48px] text-white">
-                {2354} TODO
+                {ticketsRemaining.data?.toString()}
                 <span style={{
                   color: 'rgba(255, 255, 255, 0.30)',
                   fontSize: '32px',
@@ -316,7 +343,7 @@ export function App() {
           <div className="flex-1 bg-[rgba(0,0,0,0.15)] rounded-[12px]">
             <div className="flex flex-col items-center px-6 md:px-10 py-5 text-center">
               <p className="font-light leading-[20px] text-[14px] text-[rgba(255,255,255,0.6)]">Pot size</p>
-              <p className="font-['Mountains_of_Christmas',cursive] leading-[56px] text-[48px] text-white">{(150000).toLocaleString()} ROSE TODO</p>
+              <p className="font-['Mountains_of_Christmas',cursive] leading-[56px] text-[48px] text-white">{raffleBalance.data?.value ? formatEther(raffleBalance.data?.value) : ''} ROSE</p>
             </div>
           </div>
         </div>
