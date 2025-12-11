@@ -99,6 +99,8 @@ export function App() {
   if (!ticketPrice.data) return
   if (!raffleEndTime.data) return
 
+  const hasEnded = Number(raffleEndTime.data * 1000n) < Date.now()
+
   const ticketOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => (
     { value: v, label: v + ' ticket', price: formatEther(BigInt(v) * ticketPrice.data) + ' ROSE' }
   ));
@@ -184,10 +186,13 @@ export function App() {
                 <p className="font-normal leading-[20px] text-[16px] text-[rgba(255,255,255,0.6)]">Participate in the Oasis Raffle! The initial pot is 100,000 ROSE and grows with each ticket purchased which costs {formatEther(ticketPrice.data)} ROSE.</p>
               </div>
 
-              {!isConnected ?
-                <div className='styledConnect bigButton [&_button]:w-full'>
-                  <ConnectButton />
-                </div>
+              {hasEnded
+                ? <div className="text-[rgba(255,255,255,0.6)]">Ended</div>
+                : !isConnected
+                ?
+                  <div className='styledConnect bigButton [&_button]:w-full'>
+                    <ConnectButton />
+                  </div>
                 :
                 <>
                   <div className="flex flex-col gap-6 mt-4">
