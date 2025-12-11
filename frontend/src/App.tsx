@@ -10,7 +10,7 @@ import { waitForTransactionReceipt } from 'viem/actions';
 const typedRoffleJson = RoffleJson as Roffle$Type
 
 // TODO: mainnet
-const RAFFLE_CONTRACT_ADDRESS = '0x0165878A594ca255338adfa4d48449f69242Eb8F' as `0x${string}`;
+const RAFFLE_CONTRACT_ADDRESS = '0x0656F4F298Ed781008a4Af4B65639432B455B088' as `0x${string}`;
 
 function TicketDecoration({ color, rotation, position }: { color: string; rotation: string; position: string }) {
   return (
