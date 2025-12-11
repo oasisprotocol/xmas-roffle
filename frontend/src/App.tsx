@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import svgPaths from "./imports/svg-tho7mppomn";
-import { useAccount, useConfig, useWriteContract } from 'wagmi';
+import { BaseError, useAccount, useBalance, useConfig, useReadContract, useWriteContract } from 'wagmi';
 import RoffleJson from '../../artifacts/contracts/Roffle.sol/Roffle.json';
 import { Roffle$Type } from '../../artifacts/contracts/Roffle.sol/Roffle.ts';
 import { parseEther } from 'viem';
@@ -94,10 +94,14 @@ export function App() {
         setPurchasedTickets(prev => prev + ticketAmount);
         setShowSuccess(true);
       } else {
-        // reverted. would need grpc or nexus to get the reason.
+        console.log('reverted', transactionReceipt)
+        alert('Transaction reverted. Check explorer.oasis.io to see error message')
+        // Would need grpc or nexus to get the reason.
       }
     } catch (error) {
+      // TODO: handle user rejection
       console.error('error', error)
+      alert((error as BaseError).shortMessage || (error as Error).message)
     }
   };
 
