@@ -16,19 +16,19 @@ contract Roffle is IRoffle, ReentrancyGuard, Ownable {
     // ============================================================
 
     /// @notice Cost of a single ticket in ROSE (250 ROSE)
-    uint256 public constant TICKET_PRICE = 250 ether;
+    uint256 public constant TICKET_PRICE = 1 ether;
 
     /// @notice Maximum tickets a single wallet can purchase
     uint256 public constant MAX_TICKETS_PER_WALLET = 10;
 
     /// @notice Maximum total tickets available for sale
-    uint256 public constant MAX_TOTAL_TICKETS = 3600;
+    uint256 public constant MAX_TOTAL_TICKETS = 15;
 
     /// @notice Number of winners to be selected
-    uint256 public constant WINNER_COUNT = 10;
+    uint256 public constant WINNER_COUNT = 3;
 
     /// @notice Default raffle duration (1 week)
-    uint256 public constant DEFAULT_DURATION = 1 weeks;
+    uint256 public constant DEFAULT_DURATION = 1 hours;
 
     /// @notice Basis points denominator (100% = 10000)
     uint256 public constant BASIS_POINTS = 10000;
@@ -36,7 +36,7 @@ contract Roffle is IRoffle, ReentrancyGuard, Ownable {
     /// @notice Prize distribution percentages in basis points (100 = 1%)
     /// @dev [50%, 20%, 10%, 5%, 5%, 2%, 2%, 2%, 2%, 2%]
     uint256[WINNER_COUNT] public PRIZE_PERCENTAGES = [
-        uint256(5000), 2000, 1000, 500, 500, 200, 200, 200, 200, 200
+        uint256(5000), 3000, 2000
     ];
 
     // ============================================================

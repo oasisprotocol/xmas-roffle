@@ -38,9 +38,9 @@ const CONTRACTS = {
   only2hours: '0xf786f37EF135f690803F9aD0247DEF654fDBA361',
   only4hours: '0x7CC7ca43b9bdA25b5682b69b8f028eD64BF3157a',
   only4hours15tickets: '0x136b8c13927f60439aF8fAde24B04b7DD27D81E9',
+  mainnet1h: '0x5d683b980615A7A60B3cFf3DFC338A9985278fF3',
 } as const
-// TODO: mainnet
-const RAFFLE_CONTRACT_ADDRESS = CONTRACTS.normal
+const RAFFLE_CONTRACT_ADDRESS = CONTRACTS.mainnet1h
 
 export function App() {
   const acc = useAccount()
