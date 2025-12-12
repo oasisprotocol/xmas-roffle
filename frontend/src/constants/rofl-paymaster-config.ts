@@ -42,3 +42,5 @@ export const ROFL_PAYMASTER_TOKEN_CONFIG: Record<string, RoflPaymasterChainConfi
 export const ROFL_PAYMASTER_SAPPHIRE_CONTRACT_CONFIG = {
   [sapphire.id]: '0x6997953a4458F019506370110e84eefF52d375ad' as Address,
 }
+
+export const ROFL_PAYMASTER_SLIPPAGE_PERCENTAGE = 2000n // 2000n / 100_000n = 0.02
