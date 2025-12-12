@@ -67,6 +67,16 @@ export function App() {
   const raffleBalance = useBalance({
     address: RAFFLE_CONTRACT_ADDRESS,
   })
+  const initialPot = useReadContract({
+    address: RAFFLE_CONTRACT_ADDRESS,
+    abi: typedRoffleJson.abi,
+    functionName: 'opfContribution',
+  })
+  const maxTotalTickers = useReadContract({
+    address: RAFFLE_CONTRACT_ADDRESS,
+    abi: typedRoffleJson.abi,
+    functionName: 'MAX_TOTAL_TICKETS',
+  })
   const ticketPrice = useReadContract({
     address: RAFFLE_CONTRACT_ADDRESS,
     abi: typedRoffleJson.abi,
@@ -257,7 +267,7 @@ export function App() {
                   Xmas Roffle
                 </p>
                 <p className="font-normal leading-[20px] text-[16px] text-[rgba(255,255,255,0.6)]">
-                  Participate in the Oasis Christmas raffle! The initial pot is 100,000 ROSE and grows with
+                  Participate in the Oasis Christmas raffle! The initial pot is {initialPot?.data ? formatEther(initialPot.data) : '...'} ROSE and grows with
                   each ticket purchased which costs {formatEther(ticketPrice.data)} ROSE.
                 </p>
               </div>
@@ -660,7 +670,7 @@ export function App() {
                     fontSize: '32px',
                   }}
                 >
-                  /3600
+                  /{maxTotalTickers.data?.toString()}
                 </span>
               </p>
             </div>
