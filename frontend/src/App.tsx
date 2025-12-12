@@ -4,16 +4,18 @@ import svgPaths from './imports/svg-tho7mppomn'
 import { BaseError, useAccount, useBalance, useConfig, useReadContract, useWriteContract } from 'wagmi'
 import RoffleJson from '../../artifacts/contracts/Roffle.sol/Roffle.json'
 import { Roffle$Type } from '../../artifacts/contracts/Roffle.sol/Roffle.ts'
-import { formatEther, parseEther } from 'viem'
+import { formatEther } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
 import tickets250_svg from './assets/tickets250.svg'
 import ticketsYay_svg from './assets/ticketsYay.svg'
 import ticketsWow_svg from './assets/ticketsWow.svg'
 import ticketsOmg_svg from './assets/ticketsOmg.svg'
-import ticketsNoo_svg from './assets/ticketsNoo.svg'
 import { LucideLoader } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader } from './components/index.ts'
 import { FAQ } from './FAQ.tsx'
+import { TopUpButton } from './components/TopUpButton'
+import { ROFL_PAYMASTER_DESTINATION_CHAIN_TOKEN } from './constants/rofl-paymaster-config.ts'
+import { sapphire } from 'wagmi/chains'
 
 const typedRoffleJson = RoffleJson as Roffle$Type
 
@@ -39,6 +41,10 @@ export function App() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [purchasedTickets, setPurchasedTickets] = useState(0)
   const [isFaqOpen, setIsFaqOpen] = useState(false)
+  const { data: accountBalance } = useBalance({
+    address: acc.address,
+    chainId: sapphire.id
+  })
 
   const raffleBalance = useBalance({
     address: RAFFLE_CONTRACT_ADDRESS,
@@ -270,20 +276,42 @@ export function App() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={handleBuyTickets}
-                      disabled={buyTx.isPending || isWaitingForBuyReceipt}
-                      className="bg-white hover:bg-gray-100 disabled:bg-gray-500 transition-colors flex h-[64px] items-center justify-center px-4 py-2 rounded-[12px] w-full"
-                    >
-                      {buyTx.isPending || isWaitingForBuyReceipt ? (
-                        <LucideLoader className="animate-spin" />
-                      ) : (
-                        <p className="font-medium leading-[20px] text-[16px] text-black text-center">
-                          Buy {ticketAmount} Ticket{ticketAmount > 1 ? 's' : ''} for{' '}
-                          {formatEther(BigInt(ticketAmount) * ticketPrice.data)} ROSE
-                        </p>
-                      )}
-                    </button>
+                    {(() => {
+                      const balance = accountBalance?.value ?? BigInt('0')
+                      const requiredBalance =
+                        BigInt(ticketAmount) *
+                        250n *
+                        10n ** BigInt(ROFL_PAYMASTER_DESTINATION_CHAIN_TOKEN.decimals)
+                      const topUpAmount = requiredBalance - balance
+
+                      if (requiredBalance > balance) {
+                        return (
+                          <TopUpButton roseAmountInBaseUnits={topUpAmount}>
+                            {({ amountLabel }) =>
+                              `Buy ${ticketAmount} Ticket${ticketAmount > 1 ? 's' : ''} for ${amountLabel}`
+                            }
+                          </TopUpButton>
+                        )
+                      }
+
+                      return (
+                        <button
+                          onClick={handleBuyTickets}
+                          disabled={buyTx.isPending || isWaitingForBuyReceipt}
+                          className="bg-white hover:bg-gray-100 disabled:bg-gray-500 transition-colors flex h-[64px] items-center justify-center px-4 py-2 rounded-[12px] w-full"
+                        >
+                          {buyTx.isPending || isWaitingForBuyReceipt ? (
+                            <LucideLoader className="animate-spin" />
+                          ) : (
+                            <p className="font-medium leading-[20px] text-[16px] text-black text-center">
+                              Buy {ticketAmount} Ticket{ticketAmount > 1 ? 's' : ''} for{' '}
+                              {formatEther(BigInt(ticketAmount) * ticketPrice.data)} ROSE
+                            </p>
+                          )}
+                        </button>
+                      )
+                    })()}
+
                     {buyTx.error && (
                       <p className="text-warning">
                         {(buyTx.error as BaseError).shortMessage || buyTx.error.message}

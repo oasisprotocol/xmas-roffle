@@ -1,6 +1,7 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { defineChain } from 'viem'
-import { sapphire, sapphireTestnet } from 'wagmi/chains'
+import { sapphire, sapphireTestnet, base } from 'wagmi/chains'
+import { Config } from 'wagmi'
 
 export const sapphireLocalnet = defineChain({
   id: 0x5afd,
@@ -20,11 +21,11 @@ export const sapphireLocalnet = defineChain({
   },
 })
 
-export const config = getDefaultConfig({
+export const config: Config = getDefaultConfig({
   appName: 'Xmas Raffle',
   projectId: '5c76ff8764ea097205fffc221f056c98',
   // TODO: mainnet
-  chains: [sapphireTestnet],
+  chains: [sapphireTestnet, sapphire, base],
   ssr: false,
   batch: {
     multicall: false,
