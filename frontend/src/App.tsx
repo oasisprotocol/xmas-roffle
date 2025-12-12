@@ -41,7 +41,7 @@ const CONTRACTS = {
 } as const
 // TODO: mainnet
 const CONTRACT_NETWORK = sapphireTestnet
-const RAFFLE_CONTRACT_ADDRESS = CONTRACTS.normal
+const RAFFLE_CONTRACT_ADDRESS = CONTRACTS.noTickets
 
 export function App() {
   const acc = useAccount()
