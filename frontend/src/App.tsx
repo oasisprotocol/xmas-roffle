@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import svgPaths from './imports/svg-tho7mppomn'
 import { BaseError, useAccount, useBalance, useConfig, useReadContract, useWriteContract } from 'wagmi'
-import RoffleJson from '../../artifacts/contracts/Roffle.sol/Roffle.json'
-import { Roffle$Type } from '../../artifacts/contracts/Roffle.sol/Roffle.ts'
+import RoffleJson from '../../artifacts/contracts/Roffle5.sol/Roffle.json'
+import { Roffle$Type } from '../../artifacts/contracts/Roffle5.sol/Roffle.ts'
 import { formatEther, parseEther } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
 import tickets250_svg from './assets/tickets250.svg'
@@ -35,11 +35,12 @@ const CONTRACTS = {
   only4hours: '0x7CC7ca43b9bdA25b5682b69b8f028eD64BF3157a',
   only4hours15tickets: '0x136b8c13927f60439aF8fAde24B04b7DD27D81E9',
   mainnet1week3winners: '0x5507E5dE2A23ED8D5BB10Bd8d3734FFCbFC84DA3',
+  mainnet12h5winners: '0xab5fF015023E032313459b59E7E0b93dDb99d75B',
   mainnet13hours5winners: '0xCF734e31C3E50dA43AC676e7E70525dFba24e6f6',
   final: '0x405B9960A9a0380471B82a66400C786B22ff9f52',
 } as const
 const CONTRACT_NETWORK = sapphire
-const RAFFLE_CONTRACT_ADDRESS = CONTRACTS.final
+const RAFFLE_CONTRACT_ADDRESS = CONTRACTS.mainnet12h5winners
 
 const SOCIAL_SHARE_TEXT = `I'm in! 🎄
 Just got my tickets for the Oasis Xmas Roffle — 10 winners sharing up to 1M $ROSE!

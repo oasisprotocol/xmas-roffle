@@ -43,7 +43,7 @@ interface IRoffle {
     /// @notice Emitted when winners are selected and prizes distributed
     /// @param winners Array of winner addresses
     /// @param prizes Array of prize amounts
-    event WinnersSelected(address[10] winners, uint256[10] prizes);
+    event WinnersSelected(address[5] winners, uint256[5] prizes);
 
     /// @notice Emitted when a prize is distributed to a winner
     /// @param winner Address of the winner
@@ -155,7 +155,7 @@ interface IRoffle {
 
     /// @notice Get all winner information after raffle completion
     /// @return Array of Winner structs containing addresses and prizes
-    function getWinners() external view returns (Winner[10] memory);
+    function getWinners() external view returns (Winner[5] memory);
 
     /// @notice Get the total number of entries (for transparency)
     /// @return Total number of ticket entries
