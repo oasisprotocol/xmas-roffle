@@ -16,6 +16,7 @@ import { writeContract, waitForTransactionReceipt } from '@wagmi/core'
 import { config } from '../wagmi'
 import CrossChainPaymaster_ABI from '../contracts/CrossChainPaymaster_ABI.json'
 import { base } from 'wagmi/chains'
+import { fetchWithRetry } from './promise.utils.ts'
 
 const encodeIndex = (_index: string | number) => {
   const indexStr = typeof _index === 'number' ? `0x${_index.toString(16)}` : _index
@@ -64,11 +65,11 @@ export async function generateMerkleProof(
   const receipts = await Promise.all(
     block.transactions.map(async tx => {
       const txHash = typeof tx === 'string' ? tx : tx.hash
-      return await publicClient.request({
+      return await fetchWithRetry(() => publicClient.request({
         method: 'eth_getTransactionReceipt',
         params: [txHash],
         chainId: base.id,
-      })
+      }))
     })
   )
 

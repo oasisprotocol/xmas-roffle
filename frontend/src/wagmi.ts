@@ -94,6 +94,6 @@ export const config: Config = createConfig({
   multiInjectedProviderDiscovery: false, // Disable auto-discovery of injected providers
   ssr: false,
   batch: {
-    multicall: false,
+    multicall: true,
   },
 })

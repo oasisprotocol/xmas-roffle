@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
-import { BaseError, useAccount, useBalance } from 'wagmi'
+import { BaseError, fallback, useAccount, useBalance } from 'wagmi'
 import { checkAndSetErc20Allowance, switchToChain } from '../contracts/erc-20'
-import { Address, Chain } from 'viem'
+import { Address, Chain, http } from 'viem'
 import { base } from 'wagmi/chains'
 import { deposit } from '../contracts/paymasterVault.ts'
 import {
@@ -319,7 +319,17 @@ export function usePaymaster(
           console.error('Error polling payment:', ex)
           console.warn('Trying to generate manual proof')
 
-          const sourcePublicClient = getPublicClient(config, { chainId: base.id })!
+          const sourcePublicClient = getPublicClient(
+            {
+              ...config,
+              transport: fallback([
+                http('https://mainnet.base.org'),
+                http('https://base-rpc.publicnode.com'),
+                http('https://base.llamarpc.com'),
+              ]),
+            },
+            { chainId: base.id }
+          )!
 
           await generateAndSubmitManualProof(
             receipt,
