@@ -1,15 +1,39 @@
-import dts from 'vite-plugin-dts'
-import tailwindcss from '@tailwindcss/vite'
-import path from 'node:path'
 import { defineConfig, UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 export default defineConfig({
-  base: './',
-  plugins: [tailwindcss(), react(), dts()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    nodePolyfills({
+      include: ['buffer', 'process', 'util', 'stream', 'events'],
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
+    }),
+  ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      crypto: 'crypto-browserify',
+      stream: 'stream-browserify',
+      buffer: 'buffer',
     },
   },
+  define: {
+    'process.env': {},
+    global: 'globalThis',
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    },
+    include: ['buffer', 'process'],
+  },
 } satisfies UserConfig)
+

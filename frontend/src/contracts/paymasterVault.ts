@@ -1,4 +1,4 @@
-import { Address, decodeEventLog, encodeAbiParameters, keccak256 } from 'viem'
+import { Address, decodeEventLog, encodeAbiParameters, keccak256, TransactionReceipt } from 'viem'
 import { writeContract } from 'wagmi/actions'
 import PaymasterVault_ABI from './PaymasterVault_ABI.json'
 import { waitForTransactionReceipt } from '@wagmi/core'
@@ -11,7 +11,11 @@ export const deposit = async (
   amount: bigint,
   recipient: Address,
   chainId: number
-): Promise<{ paymentId: string | null }> => {
+): Promise<{
+  paymentId: string | null
+  paymentLogIndex: number | null
+  receipt: TransactionReceipt
+}> => {
   const hash = await writeContract(config, {
     address: roflPaymasterVaultContractAddress,
     abi: PaymasterVault_ABI,
@@ -76,5 +80,5 @@ export const deposit = async (
     )
   }
 
-  return { paymentId }
+  return { paymentId, paymentLogIndex, receipt }
 }
