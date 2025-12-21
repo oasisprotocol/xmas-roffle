@@ -8,6 +8,7 @@ import {
   bytesToInt,
   intToBytes,
   intToHex,
+  PrefixedHexString,
 } from '@ethereumjs/util'
 import { createBlockHeaderFromRPC, JSONRPCBlock } from '@ethereumjs/block'
 import { createCustomCommon, Hardfork, Mainnet } from '@ethereumjs/common'
@@ -21,7 +22,7 @@ import { fetchWithRetry } from './promise.utils.ts'
 const encodeIndex = (_index: string | number) => {
   const indexStr = typeof _index === 'number' ? `0x${_index.toString(16)}` : _index
   return indexStr === '0x0'
-    ? RLP.encode(Buffer.alloc(0))
+    ? RLP.encode(new Uint8Array(0))
     : RLP.encode(bytesToInt(hexToBytes(indexStr as `0x${string}`)))
 }
 
@@ -75,12 +76,17 @@ export async function generateMerkleProof(
 
   // Encode receipts
   const encodedReceipts = receipts.map(_r => {
-    const type = Number(hexToBigInt((_r!.type as `0x${string}`) || '0x0'))
+    const typeStr = _r?.type as string | undefined
+    const type = Number(hexToBigInt(<PrefixedHexString>typeStr || '0x0'))
     const encoded = RLP.encode([
-      _r!.status === '0x1' ? hexToBytes('0x01') : Uint8Array.from([]),
-      hexToBytes(_r!.cumulativeGasUsed),
-      hexToBytes(_r!.logsBloom),
-      _r!.logs.map(_log => [hexToBytes(_log.address), _log.topics.map(hexToBytes), hexToBytes(_log.data)]),
+      _r?.status === '0x1' ? hexToBytes('0x01') : Uint8Array.from([]),
+      hexToBytes(_r?.cumulativeGasUsed ?? '0x0'),
+      _r?.logsBloom ? hexToBytes(_r.logsBloom) : new Uint8Array(0),
+      (_r?.logs ?? []).map((_log: any) => [
+        hexToBytes(_log.address),
+        _log.topics.map(hexToBytes),
+        hexToBytes(_log.data),
+      ]),
     ])
     if (type === 0) return encoded
     return concatBytes(intToBytes(type), encoded)
@@ -160,7 +166,7 @@ export async function generateAndSubmitManualProof(
       chainId: destinationChainId,
     })
 
-    console.log('Manual proof submitted...!')
+    console.log('Manual proof submitted...')
   } catch (error) {
     console.error(error)
     throw error
