@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
-import { BaseError, useAccount, useBalance } from 'wagmi'
+import { BaseError, fallback, useAccount, useBalance } from 'wagmi'
 import { checkAndSetErc20Allowance, switchToChain } from '../contracts/erc-20'
-import { Address, Chain } from 'viem'
+import { Address, Chain, http } from 'viem'
 import { base } from 'wagmi/chains'
 import { deposit } from '../contracts/paymasterVault.ts'
 import {
@@ -15,6 +15,9 @@ import {
 } from '../constants/rofl-paymaster-config.ts'
 import { isPaymentProcessed, useRosePriceFeed, useTokenPriceFeed } from '../contracts/crossChainPaymaster.ts'
 import { aggregatorV3LatestRoundData, useAggregatorV3Decimals } from '../contracts/AggregatorV3.ts'
+import { generateAndSubmitManualProof } from '../lib/paymaster.utils.ts'
+import { getPublicClient } from '@wagmi/core'
+import { config } from '../wagmi.ts'
 
 export type PaymasterStepStatus = 'pending' | 'processing' | 'completed' | 'error'
 
@@ -170,6 +173,8 @@ export function usePaymaster(
   )
 
   const pollPayment = useCallback(async (paymentId: string, chain: Chain) => {
+    throw new Error('Force manual check proof generation')
+
     if (chain.id !== ROFL_PAYMASTER_DESTINATION_CHAIN.id) {
       throw new Error('Invalid chain!')
     }
@@ -291,11 +296,17 @@ export function usePaymaster(
 
         // Step 3: create a deposit
         updateStep(3, 'processing')
-        const { paymentId } = await createDeposit(targetToken.contractAddress, amount, address, base.id)
+        const { paymentId, paymentLogIndex, receipt } = await createDeposit(
+          targetToken.contractAddress,
+          amount,
+          address,
+          base.id
+        )
         updateStep(3, 'completed')
 
         // Step 4: poll
         updateStep(4, 'processing')
+        try {
         await pollPayment(paymentId!, ROFL_PAYMASTER_DESTINATION_CHAIN)
 
         await waitForSapphireNativeBalanceIncrease({
@@ -304,6 +315,30 @@ export function usePaymaster(
           intervalMs: 4_000,
           minIncrease: 1n,
         })
+        } catch (ex) {
+          console.error('Error polling payment:', ex)
+          console.warn('Trying to generate manual proof')
+
+          const sourcePublicClient = getPublicClient(
+            {
+              ...config,
+              transport: fallback([
+                http('https://mainnet.base.org'),
+                http('https://base-rpc.publicnode.com'),
+                http('https://base.llamarpc.com'),
+              ]),
+            },
+            { chainId: base.id }
+          )!
+
+          await generateAndSubmitManualProof(
+            receipt,
+            paymentLogIndex,
+            sourcePublicClient,
+            ROFL_PAYMASTER_DESTINATION_CHAIN.id,
+            ROFL_PAYMASTER_SAPPHIRE_CONTRACT_CONFIG[ROFL_PAYMASTER_DESTINATION_CHAIN.id]
+          )
+        }
         updateStep(4, 'completed')
 
         // Step 5: switch to destination
