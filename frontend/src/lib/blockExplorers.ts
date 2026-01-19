@@ -1,4 +1,4 @@
-import { base, sapphire } from 'wagmi/chains'
+import { arbitrum, base, mainnet, sapphire } from 'wagmi/chains'
 
 type ChainWithExplorer = {
   id: number
@@ -7,7 +7,7 @@ type ChainWithExplorer = {
   }
 }
 
-const SUPPORTED_CHAINS: ChainWithExplorer[] = [base, sapphire]
+const SUPPORTED_CHAINS: ChainWithExplorer[] = [base, arbitrum, mainnet, sapphire]
 
 /**
  * Get the block explorer URL for a transaction hash.

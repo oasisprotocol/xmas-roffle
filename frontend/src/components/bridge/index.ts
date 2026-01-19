@@ -1,6 +1,7 @@
 export { BridgeCard, BridgeCardSection, BridgeCardDivider } from './BridgeCard'
 export { AmountInput } from './AmountInput'
 export { TokenSelector, getTokenKey, type TokenOption } from './TokenSelector'
+export { ChainSelector, getChainIcon, DEFAULT_CHAIN_OPTIONS, type ChainOption } from './ChainSelector'
 export { FeeBreakdown, FeeEstimate, type FeeItem } from './FeeBreakdown'
 export { PendingTransactionBanner } from './PendingTransactionBanner'
 export { TransactionHistory } from './TransactionHistory'

@@ -1,11 +1,12 @@
 import { formatUnits, Address } from 'viem'
-import { base, sapphire } from 'wagmi/chains'
+import { sapphire } from 'wagmi/chains'
 import { CheckCircle, ExternalLink, Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { getExplorerTxUrl, getExplorerAddressUrl } from '../../lib/blockExplorers'
+import { getChainName } from '../../constants/rofl-paymaster-config'
 import type { BridgeSuccessData } from '../../hooks/usePaymaster'
 
 interface BridgeSuccessModalProps {
@@ -28,7 +29,8 @@ export function BridgeSuccessModal({
   if (!successData) return null
 
   const formattedAmount = formatUnits(BigInt(successData.amount), tokenDecimals)
-  const baseTxUrl = getExplorerTxUrl(base.id, successData.baseTxHash)
+  const sourceTxUrl = getExplorerTxUrl(successData.sourceChainId, successData.sourceTxHash)
+  const sourceChainName = getChainName(successData.sourceChainId)
   const sapphireWalletUrl = userAddress ? getExplorerAddressUrl(sapphire.id, userAddress) : null
 
   const handleCopyBridgeId = async () => {
@@ -61,18 +63,18 @@ export function BridgeSuccessModal({
         </DialogHeader>
 
         <div className="space-y-3 mt-4">
-          {/* Base Transaction Link */}
-          {baseTxUrl && (
+          {/* Source Chain Transaction Link */}
+          {sourceTxUrl && (
             <a
-              href={baseTxUrl}
+              href={sourceTxUrl}
               target="_blank"
               rel="noreferrer"
               className="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-white/5 hover:border-white/20 transition-colors"
             >
               <div>
-                <div className="text-sm font-medium">View Deposit on Base</div>
+                <div className="text-sm font-medium">View Deposit on {sourceChainName}</div>
                 <div className="text-xs text-white/50 mt-0.5">
-                  {successData.baseTxHash.slice(0, 10)}...{successData.baseTxHash.slice(-8)}
+                  {successData.sourceTxHash.slice(0, 10)}...{successData.sourceTxHash.slice(-8)}
                 </div>
               </div>
               <ExternalLink className="h-4 w-4 text-white/50" />

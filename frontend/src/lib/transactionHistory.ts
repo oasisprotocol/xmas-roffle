@@ -1,6 +1,13 @@
 import { Address } from 'viem'
+import { base } from 'wagmi/chains'
+import { SUPPORTED_SOURCE_CHAINS } from '../constants/rofl-paymaster-config'
 
 const STORAGE_KEY = 'oasis-bridge-tx-history'
+
+/** Check if a chain ID is supported */
+function isSupportedChain(chainId: number): boolean {
+  return SUPPORTED_SOURCE_CHAINS.some(c => c.id === chainId)
+}
 
 export type TransactionStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -14,6 +21,7 @@ export type TransactionRecord = {
   userAddress: Address
   status: TransactionStatus
   txHash?: string
+  sourceChainId: number // Chain where deposit was made (Base, Arbitrum, Ethereum)
 }
 
 export function getTransactions(userAddress: Address): TransactionRecord[] {
@@ -21,10 +29,19 @@ export function getTransactions(userAddress: Address): TransactionRecord[] {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return []
 
-    const allTransactions = JSON.parse(stored) as TransactionRecord[]
-    return allTransactions
-      .filter(tx => tx.userAddress.toLowerCase() === userAddress.toLowerCase())
-      .sort((a, b) => b.timestamp - a.timestamp)
+    const allTransactions = JSON.parse(stored) as (TransactionRecord & { sourceChainId?: number })[]
+    return (
+      allTransactions
+        .filter(tx => tx.userAddress.toLowerCase() === userAddress.toLowerCase())
+        .map(tx => ({
+          ...tx,
+          // Migration: default sourceChainId to Base for old records
+          sourceChainId: tx.sourceChainId ?? base.id,
+        }))
+        // Filter out transactions with unsupported chains (e.g., if a chain was removed)
+        .filter(tx => isSupportedChain(tx.sourceChainId))
+        .sort((a, b) => b.timestamp - a.timestamp)
+    )
   } catch (e) {
     console.warn('Failed to read transaction history:', e)
     return []

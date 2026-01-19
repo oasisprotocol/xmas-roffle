@@ -10,6 +10,8 @@ import { useCountdownTimer } from '../../hooks/useCountdownTimer.ts'
 interface Props {
   roseAmountInBaseUnits: bigint
   targetToken: RoflPaymasterTokenConfig
+  /** Source chain ID where tokens will be deposited from (defaults to Base) */
+  sourceChainId?: number
   children: ({ amountLabel }: { amountLabel: string }) => ReactNode
   additionalSteps: ProgressStepWithAction[]
   onSuccess?: () => void
@@ -19,6 +21,7 @@ interface Props {
 export const TopUpButton: FC<Props> = ({
   roseAmountInBaseUnits,
   targetToken,
+  sourceChainId = base.id,
   children,
   additionalSteps = [],
   onSuccess,
@@ -29,13 +32,14 @@ export const TopUpButton: FC<Props> = ({
   const { data: tokenBalance } = useBalance({
     address,
     token: targetToken.contractAddress,
-    chainId: base.id,
+    chainId: sourceChainId,
   })
 
   const [quote, setQuote] = useState<bigint | null>(null)
   const [showFullError, setShowFullError] = useState(false)
   const { isLoading, initialLoading, error, currentStep, getQuote, startTopUp } = usePaymaster(
     targetToken,
+    sourceChainId,
     additionalSteps
   )
 

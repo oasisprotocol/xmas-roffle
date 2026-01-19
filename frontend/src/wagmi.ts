@@ -1,6 +1,6 @@
 import { connectorsForWallets, Wallet } from '@rainbow-me/rainbowkit'
 import { defineChain, http } from 'viem'
-import { sapphire, base } from 'wagmi/chains'
+import { arbitrum, base, mainnet, sapphire } from 'wagmi/chains'
 import { Config, createConfig } from 'wagmi'
 import { metaMaskWallet, rabbyWallet, walletConnectWallet } from '@rainbow-me/rainbowkit/wallets'
 import { isMetaMaskInjected, isMobileDevice } from './lib'
@@ -85,11 +85,15 @@ export const config: Config = createConfig({
       iconUrl: 'https://assets.oasis.io/logotypes/metamask-oasis-sapphire.png',
     },
     base,
+    arbitrum,
+    mainnet,
   ],
   connectors,
   transports: {
     [sapphire.id]: http(),
     [base.id]: http(),
+    [arbitrum.id]: http(),
+    [mainnet.id]: http(),
   },
   multiInjectedProviderDiscovery: false, // Disable auto-discovery of injected providers
   ssr: false,

@@ -16,7 +16,6 @@ import { Badge } from '../ui/badge'
 
 import { getTransactions, clearHistory, TransactionRecord } from '../../lib/transactionHistory'
 import { getExplorerTxUrl } from '../../lib/blockExplorers'
-import { base } from 'wagmi/chains'
 
 // Helper to format date
 const formatDate = (timestamp: number) => {
@@ -114,7 +113,7 @@ export function TransactionHistory({
           <ScrollArea className="h-[300px] pr-4">
             <div className="space-y-3">
               {transactions.map(tx => {
-                const explorerUrl = tx.txHash ? getExplorerTxUrl(base.id, tx.txHash) : null
+                const explorerUrl = tx.txHash ? getExplorerTxUrl(tx.sourceChainId, tx.txHash) : null
 
                 return (
                   <div

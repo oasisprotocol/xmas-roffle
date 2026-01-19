@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BaseError, useAccount, useBalance } from 'wagmi'
 import { checkAndSetErc20Allowance, switchToChain } from '../contracts/erc-20'
 import { Address, Chain } from 'viem'
-import { base } from 'wagmi/chains'
 import { deposit } from '../contracts/paymasterVault.ts'
 import {
   clearPendingTransaction,
@@ -13,6 +12,7 @@ import {
 } from '../lib/pendingTransaction.ts'
 import { getTransactions, saveTransaction, updateTransactionStatus } from '../lib/transactionHistory.ts'
 import {
+  getChainName,
   ROFL_PAYMASTER_DESTINATION_CHAIN,
   ROFL_PAYMASTER_DESTINATION_CHAIN_TOKEN,
   ROFL_PAYMASTER_EXPECTED_TIME,
@@ -43,7 +43,10 @@ export type StartTopUpParams = {
 /** Data populated on successful bridge completion for the success modal */
 export type BridgeSuccessData = {
   paymentId: string
-  baseTxHash: string
+  /** Transaction hash on the source chain (Base, Arbitrum, or Ethereum) */
+  sourceTxHash: string
+  /** Chain ID where the deposit was made */
+  sourceChainId: number
   amount: string
   tokenSymbol: string
 }
@@ -88,37 +91,43 @@ const BALANCE_CHECK_TIMEOUT_MS = 3 * 60_000
 // Prevents false positives from dust transfers or staking rewards
 const MIN_BALANCE_INCREASE_THRESHOLD = 1_000_000_000_000_000n
 
-const progressSteps = [
-  {
-    id: 1,
-    label: 'Connecting to Base',
-  },
-  {
-    id: 2,
-    label: 'Approving token spend',
-  },
-  {
-    id: 3,
-    label: 'Executing deposit transaction',
-  },
-  {
-    id: 4,
-    label: 'Confirming completion',
-    expectedTimeInSeconds: ROFL_PAYMASTER_EXPECTED_TIME,
-  },
-  {
-    id: 5,
-    label: 'Connecting to Sapphire',
-  },
-]
+/** Generate progress steps with dynamic chain name */
+function createProgressSteps(sourceChainName: string): ProgressStep[] {
+  return [
+    {
+      id: 1,
+      label: `Connecting to ${sourceChainName}`,
+    },
+    {
+      id: 2,
+      label: 'Approving token spend',
+    },
+    {
+      id: 3,
+      label: 'Executing deposit transaction',
+    },
+    {
+      id: 4,
+      label: 'Confirming completion',
+      expectedTimeInSeconds: ROFL_PAYMASTER_EXPECTED_TIME,
+    },
+    {
+      id: 5,
+      label: 'Connecting to Sapphire',
+    },
+  ]
+}
 
 /** Number of built-in progress steps in the paymaster flow */
-export const PROGRESS_STEP_COUNT = progressSteps.length
+export const PROGRESS_STEP_COUNT = 5
 
 export function usePaymaster(
   targetToken: RoflPaymasterTokenConfig,
+  sourceChainId: number,
   additionalSteps: ProgressStepWithAction[]
 ): UsePaymasterTopUpFlowReturn {
+  // Generate progress steps with dynamic chain name
+  const progressSteps = useMemo(() => createProgressSteps(getChainName(sourceChainId)), [sourceChainId])
   const { address } = useAccount()
   const { refetch: refetchSapphireNativeBalance } = useBalance({
     address,
@@ -202,15 +211,18 @@ export function usePaymaster(
       return
     }
 
-    // If it's for a different token, don't show but keep in storage
-    // User can recover when they select the correct token
-    if (pending.tokenAddress.toLowerCase() !== targetToken.contractAddress.toLowerCase()) {
+    // If it's for a different token or chain, don't show but keep in storage
+    // User can recover when they select the correct token and chain
+    if (
+      pending.tokenAddress.toLowerCase() !== targetToken.contractAddress.toLowerCase() ||
+      pending.sourceChainId !== sourceChainId
+    ) {
       setPendingTransaction(null)
       return
     }
 
     setPendingTransaction(pending)
-  }, [address, targetToken.contractAddress])
+  }, [address, targetToken.contractAddress, sourceChainId])
 
   const dismissPending = useCallback(() => {
     clearPendingTransaction()
@@ -557,13 +569,14 @@ export function usePaymaster(
       updateTransactionStatus(paymentId, 'completed')
 
       // Set success data for the success modal
-      // Look up baseTxHash from transaction history (saved when deposit was created)
+      // Look up sourceTxHash from transaction history (saved when deposit was created)
       const transactions = getTransactions(address)
       const txRecord = transactions.find(tx => tx.paymentId === paymentId)
       if (txRecord?.txHash) {
         setSuccessData({
           paymentId,
-          baseTxHash: txRecord.txHash,
+          sourceTxHash: txRecord.txHash,
+          sourceChainId: pendingTransaction.sourceChainId,
           amount: pendingTransaction.amount,
           tokenSymbol: pendingTransaction.tokenSymbol,
         })
@@ -617,7 +630,11 @@ export function usePaymaster(
         throw new Error('Wallet not connected')
       }
 
-      const sourceChainConfig = ROFL_PAYMASTER_TOKEN_CONFIG[base.id]
+      const sourceChainConfig = ROFL_PAYMASTER_TOKEN_CONFIG[sourceChainId]
+      if (!sourceChainConfig) {
+        isLoadingRef.current = false
+        throw new Error(`Unsupported source chain: ${sourceChainId}`)
+      }
 
       // Abort any lingering operation before creating new controller
       abortControllerRef.current?.abort()
@@ -629,7 +646,7 @@ export function usePaymaster(
       // Track whether deposit was committed (for error handling)
       let depositCommitted = false
       let paymentId: string | null = null
-      let baseTxHash: string | null = null
+      let sourceTxHash: string | null = null
 
       try {
         // Step 1: switch to source chain
@@ -641,7 +658,7 @@ export function usePaymaster(
           (() => {
             throw new Error('Failed to read Sapphire native balance')
           })()
-        await switchToChain({ targetChainId: base.id, address })
+        await switchToChain({ targetChainId: sourceChainId, address })
         updateStep(1, 'completed')
 
         // Check for cancellation before user interaction
@@ -654,7 +671,7 @@ export function usePaymaster(
           sourceChainConfig.paymasterContractAddress,
           amount,
           address,
-          base.id
+          sourceChainId
         )
         updateStep(2, 'completed')
 
@@ -662,7 +679,7 @@ export function usePaymaster(
 
         // Step 3: create a deposit
         updateStep(3, 'processing')
-        const depositResult = await createDeposit(targetToken.contractAddress, amount, address, base.id)
+        const depositResult = await createDeposit(targetToken.contractAddress, amount, address, sourceChainId)
 
         if (!depositResult.paymentId) {
           const txHash = depositResult.hash
@@ -673,7 +690,7 @@ export function usePaymaster(
           )
         }
         paymentId = depositResult.paymentId
-        baseTxHash = depositResult.hash
+        sourceTxHash = depositResult.hash
         depositCommitted = true // Funds are now committed on-chain
 
         saveTransaction({
@@ -686,6 +703,7 @@ export function usePaymaster(
           userAddress: address,
           status: 'processing',
           txHash: depositResult.hash,
+          sourceChainId,
         })
 
         // Save pending transaction for recovery if user closes tab during polling
@@ -697,6 +715,7 @@ export function usePaymaster(
           tokenAddress: targetToken.contractAddress,
           userAddress: address,
           roseAmount: '0', // We don't know exact ROSE amount until processed
+          sourceChainId,
         })
 
         updateStep(3, 'completed')
@@ -740,10 +759,11 @@ export function usePaymaster(
         if (paymentId) updateTransactionStatus(paymentId, 'completed')
 
         // Set success data for the success modal
-        if (paymentId && baseTxHash) {
+        if (paymentId && sourceTxHash) {
           setSuccessData({
             paymentId,
-            baseTxHash,
+            sourceTxHash: sourceTxHash,
+            sourceChainId,
             amount: amount.toString(),
             tokenSymbol: targetToken.symbol,
           })
@@ -791,6 +811,7 @@ export function usePaymaster(
       targetToken.contractAddress,
       targetToken.symbol,
       targetToken.decimals,
+      sourceChainId,
       additionalSteps,
       refetchSapphireNativeBalance,
       waitForSapphireNativeBalanceIncrease,

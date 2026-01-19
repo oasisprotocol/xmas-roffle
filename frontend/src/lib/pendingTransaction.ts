@@ -1,6 +1,13 @@
 import { Address } from 'viem'
+import { base } from 'wagmi/chains'
+import { SUPPORTED_SOURCE_CHAINS } from '../constants/rofl-paymaster-config'
 
 const STORAGE_KEY = 'oasis-bridge-pending-tx'
+
+/** Check if a chain ID is supported */
+function isSupportedChain(chainId: number): boolean {
+  return SUPPORTED_SOURCE_CHAINS.some(c => c.id === chainId)
+}
 
 export type PendingTransaction = {
   paymentId: string
@@ -10,6 +17,7 @@ export type PendingTransaction = {
   tokenAddress: Address
   userAddress: Address
   roseAmount: string // bigint serialized as string
+  sourceChainId: number // Chain where deposit was made (Base, Arbitrum, Ethereum)
 }
 
 /**
@@ -33,7 +41,7 @@ export function getPendingTransaction(): PendingTransaction | null {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return null
 
-    const parsed = JSON.parse(stored) as PendingTransaction
+    const parsed = JSON.parse(stored) as PendingTransaction & { sourceChainId?: number }
 
     // Validate all required fields to ensure data integrity
     if (
@@ -50,7 +58,20 @@ export function getPendingTransaction(): PendingTransaction | null {
       return null
     }
 
-    return parsed
+    // Migration: default sourceChainId to Base for old records
+    const resolvedChainId = parsed.sourceChainId ?? base.id
+
+    // Validate that the chain is still supported
+    if (!isSupportedChain(resolvedChainId)) {
+      console.warn(`Pending transaction has unsupported chain ID: ${resolvedChainId}`)
+      clearPendingTransaction()
+      return null
+    }
+
+    return {
+      ...parsed,
+      sourceChainId: resolvedChainId,
+    }
   } catch (e) {
     console.warn('Failed to read pending transaction from localStorage:', e)
     return null
